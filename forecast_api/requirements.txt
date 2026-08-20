@@ -1,0 +1,13 @@
+# requirements.txt
+pandas
+numpy
+tensorflow
+torch
+pytorch-lightning
+pytorch-forecasting
+statsmodels
+fastapi
+uvicorn[standard]
+scikit-learn
+matplotlib
+seaborn
