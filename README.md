@@ -14,7 +14,7 @@ An end-to-end weather forecasting pipeline built on the **Jena Climate 2009-2016
 │
 ├── export_hourly.py                 # Resample raw data to hourly + feature engineering
 ├── train_tft.py                     # Train TFT model (10 epochs (trained for 1 epoch on CPU for demo speed), CPU)
-├── backtest.py                      # SARIMA walk-forward validation (5 windows)
+├── backtest.py                      # SARIMA and TFT walk-forward validation (2 windows)
 ├── jena_climate_eda.ipynb           # Jupyter notebook: EDA, visualizations, SARIMA baseline
 │
 ├── tft_checkpoint.pth               # Saved TFT model weights
@@ -62,7 +62,7 @@ Output: `tft_checkpoint.pth`
 
 ### 4. Run Backtesting
 
-Evaluates SARIMA across 5 evenly-spaced windows (500h training, 24h forecast each):
+Evaluates SARIMA and TFT across 2 windows (168h training context, 24h forecast each):
 
 ```bash
 python backtest.py
@@ -128,16 +128,12 @@ Returns `{"status": "ok"}` when the server is running.
 
 ---
 
-## Backtest Results (SARIMA)
-
-| Window | Period | MAE (C) | RMSE (C) | MAPE (%) |
-|--------|--------|---------|----------|----------|
-| 1 | Jan 2009 | 1.45 | 2.02 | 84.0 |
-| 2 | Jan 2011 | 1.76 | 2.13 | 48.6 |
-| 3 | Jan 2013 | 0.68 | 0.83 | 79.3 |
-| 4 | Jan 2015 | 1.49 | 1.75 | 134.9 |
-| 5 | Dec 2016 | 2.42 | 3.34 | 166.0 |
-| **Average** | | **1.56** | **2.01** | **102.6** |
+## Backtest Results
+ 
+| Window End | SARIMA MAPE (%) | TFT MAPE (%) |
+|------------|-----------------|--------------|
+| 60000      | 9.79            | 33.71        |
+| 65000      | 7.22            | 37.53        |
 
 ---
 

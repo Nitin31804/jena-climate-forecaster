@@ -63,9 +63,4 @@ print(res_df)
 os.makedirs('assets', exist_ok=True)
 res_df.to_markdown('assets/backtest_results.md', index=False)
 
-# Update README
-r_file = 'README.md'
-with open(r_file, 'r') as f: rcode = f.read()
-import re
-rcode = re.sub(r'5 separate 500-hour windows', '2 separate 168-hour windows (60000, 65000)', rcode)
-with open(r_file, 'w') as f: f.write(rcode)
+
