@@ -125,14 +125,24 @@ def forecast_tft(model, dataset, horizon, use_live_data=False):
     import numpy as np
     if use_live_data:
         df = get_live_weather_jena()
-        df["time_idx"] = range(70106, 70106 + len(df))
+        df = df.iloc[-168:].copy()
+        last_idx = 70106 + len(df)
+        df["time_idx"] = range(70106, last_idx)
+        df["series_id"] = "0"
+        
+        future_rows = []
+        for i in range(168):
+            future_rows.append({"time_idx": last_idx + i, "series_id": "0", TARGET: df[TARGET].iloc[-1]})
+        df = pd.concat([df, pd.DataFrame(future_rows)], ignore_index=True)
+        encoder_df = df[["time_idx", "series_id", TARGET]].copy()
     else:
         df = pd.read_csv(DATA_CSV, parse_dates=["Date Time"])
         df = df.reset_index(drop=True)
         df["time_idx"] = df.index
-    df["series_id"] = "0"
-    df = df[["time_idx", "series_id", TARGET]].copy()
-    encoder_df = df.iloc[-(168 + 168):]
+        df["series_id"] = "0"
+        df = df[["time_idx", "series_id", TARGET]].copy()
+        encoder_df = df.iloc[-(168 + 168):]
+        
     from pytorch_forecasting import TimeSeriesDataSet
     pred_dataset = TimeSeriesDataSet.from_dataset(dataset, encoder_df, predict=True, stop_randomization=True)
     pred_loader = pred_dataset.to_dataloader(train=False, batch_size=1, shuffle=False, num_workers=0)
