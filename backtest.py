@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.statespace.sarimax import SARIMAX
@@ -26,21 +27,25 @@ except Exception as e:
 results = []
 
 for w in windows:
+    # SARIMA
     train_data = df.iloc[w - train_size : w].copy()
     test_data = df.iloc[w : w + horizon].copy()
     actuals = test_data[TARGET].values
 
-    # SARIMA
     print(f'Fitting SARIMA for window {w}...')
     sarima = SARIMAX(train_data[TARGET], order=(1,1,1), seasonal_order=(1,0,1,24), enforce_stationarity=False, enforce_invertibility=False)
     res = sarima.fit(disp=False, maxiter=20)
     sarima_fc = res.get_forecast(steps=horizon).predicted_mean.values
     sarima_mape = np.mean(np.abs((actuals - sarima_fc) / actuals)) * 100
 
+    # TFT
     tft_mape = 'N/A'
     if tft_available:
         print(f'Inference TFT for window {w}...')
-        encoder_df = df.iloc[w - 168 : w + horizon][["time_idx", "series_id", TARGET]].copy()
+        # We need max_encoder_length + max_prediction_length rows for the dataloader context
+        # Since predict=True assumes the end of the df is the end of the encoder context, we pass the 336 rows ending at w.
+        encoder_df = df.iloc[w - (168 + 168) : w][["time_idx", "series_id", TARGET]].copy()
+        
         pred_ds = TimeSeriesDataSet.from_dataset(dataset, encoder_df, predict=True, stop_randomization=True)
         pred_loader = pred_ds.to_dataloader(train=False, batch_size=1, shuffle=False, num_workers=0)
         with torch.no_grad():
@@ -57,3 +62,10 @@ res_df = pd.DataFrame(results)
 print(res_df)
 os.makedirs('assets', exist_ok=True)
 res_df.to_markdown('assets/backtest_results.md', index=False)
+
+# Update README
+r_file = 'README.md'
+with open(r_file, 'r') as f: rcode = f.read()
+import re
+rcode = re.sub(r'5 separate 500-hour windows', '2 separate 168-hour windows (60000, 65000)', rcode)
+with open(r_file, 'w') as f: f.write(rcode)
