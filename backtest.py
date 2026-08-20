@@ -35,8 +35,8 @@ print("Loaded {} rows from df_hourly.csv".format(len(series)))
 # ---------- SARIMA forecast function ----------
 def forecast_sarima(train_series, steps):
     """Fit a simple ARMA(1,0,1) -- no differencing, no seasonal -- and forecast."""
-    model = SARIMAX(train_series, order=(1, 0, 1), enforce_stationarity=False, enforce_invertibility=False)
-    results = model.fit(disp=False, maxiter=50)
+    model = SARIMAX(train_series, order=(1, 1, 1), seasonal_order=(1, 0, 1, 24), enforce_stationarity=False, enforce_invertibility=False)
+    results = model.fit(disp=False, maxiter=20)
     forecast = results.get_forecast(steps=steps)
     return forecast.predicted_mean
 

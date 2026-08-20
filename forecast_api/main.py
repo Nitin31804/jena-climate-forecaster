@@ -22,6 +22,7 @@ Response (JSON):
 """
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import datetime
@@ -29,6 +30,12 @@ import datetime
 from .utils import load_sarima_model, load_tft_model, forecast_sarima, forecast_tft
 
 app = FastAPI(title="Weather Forecast API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ForecastResponse(BaseModel):

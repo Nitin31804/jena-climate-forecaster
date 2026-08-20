@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jena Climate Forecaster</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }</style>
+</head>
+<body>
+    <h2>Jena Climate Forecast</h2>
+    <div>
+        <label>Model: <select id="model"><option value="sarima">SARIMA</option><option value="tft">TFT</option></select></label>
+        <label>Horizon: <input type="number" id="horizon" value="48" max="168" min="1"></label>
+        <button onclick="fetchForecast()">Get Forecast</button>
+        &nbsp;&nbsp;<label><input type="checkbox" id="live"> Use Live Data</label>
+    </div>
+    <canvas id="chart" width="400" height="200"></canvas>
+    <script>
+        let chart = null;
+        async function fetchForecast() {
+            const model = document.getElementById('model').value;
+            const horizon = document.getElementById('horizon').value;
+            const live = document.getElementById('live').checked;
+            const res = await fetch(`http://127.0.0.1:8000/forecast?model=${model}&horizon=${horizon}&use_live_data=${live}`);
+            const data = await res.json();
+            
+            const labels = Array.from({length: data.horizon}, (_, i) => `+${i+1}h`);
+            
+            if (chart) chart.destroy();
+            const ctx = document.getElementById('chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Forecast (degC)', data: data.forecast, borderColor: 'blue', fill: false },
+                        { label: 'Lower CI', data: data.lower_ci, borderColor: 'rgba(0,0,255,0.2)', backgroundColor: 'rgba(0,0,255,0.1)', fill: '+1' },
+                        { label: 'Upper CI', data: data.upper_ci, borderColor: 'rgba(0,0,255,0.2)', fill: false }
+                    ]
+                }
+            });
+        }
+    </script>
+</body>
+</html>

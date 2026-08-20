@@ -13,7 +13,7 @@ An end-to-end weather forecasting pipeline built on the **Jena Climate 2009-2016
 ├── .gitignore                       # Git ignore rules
 │
 ├── export_hourly.py                 # Resample raw data to hourly + feature engineering
-├── train_tft.py                     # Train TFT model (2 epochs, CPU)
+├── train_tft.py                     # Train TFT model (10 epochs (trained for 1 epoch on CPU for demo speed), CPU)
 ├── backtest.py                      # SARIMA walk-forward validation (5 windows)
 ├── jena_climate_eda.ipynb           # Jupyter notebook: EDA, visualizations, SARIMA baseline
 │
@@ -52,7 +52,7 @@ Output: `df_hourly.csv` (~70,000 rows, 21 columns)
 
 ### 3. Train the TFT Model
 
-Trains a Temporal Fusion Transformer (15,909 parameters, 2 epochs on CPU):
+Trains a Temporal Fusion Transformer (15,909 parameters, 10 epochs (trained for 1 epoch on CPU for demo speed) on CPU):
 
 ```bash
 python train_tft.py
@@ -123,7 +123,7 @@ Returns `{"status": "ok"}` when the server is running.
 ### Temporal Fusion Transformer (TFT)
 - **Architecture**: Attention-based encoder-decoder with variable selection
 - **Parameters**: 15,909
-- **Training**: 2 epochs, 50 train batches, 10 val batches (CPU)
+- **Training**: 10 epochs (trained for 1 epoch on CPU for demo speed), 50 train batches, 10 val batches (CPU)
 - **Library**: `pytorch-forecasting` 1.8.0
 
 ---

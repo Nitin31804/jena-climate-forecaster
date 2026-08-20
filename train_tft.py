@@ -19,8 +19,8 @@ try:
     from pytorch_forecasting.data import GroupNormalizer
     from pytorch_forecasting.metrics import QuantileLoss
 
-    DATA_PATH = r"C:\Users\Admin\OneDrive\Documents\df_hourly.csv"
-    CHECKPOINT_PATH = r"C:\Users\Admin\OneDrive\Documents\tft_checkpoint.pth"
+    DATA_PATH = "df_hourly.csv"
+    CHECKPOINT_PATH = "tft_checkpoint.pth"
     TARGET = "T (degC)"
 
     # ------------------------------------------------------------------
@@ -101,10 +101,10 @@ try:
     # ------------------------------------------------------------------
     trainer = pl.Trainer(
         accelerator="cpu",
-        max_epochs=1,
+        max_epochs=10,
         gradient_clip_val=0.1,
-        limit_train_batches=20,
-        limit_val_batches=5,
+        limit_train_batches=300,
+        limit_val_batches=50,
         enable_progress_bar=False,
         enable_model_summary=False,
         logger=False,
