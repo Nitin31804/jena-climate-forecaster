@@ -116,7 +116,7 @@ Returns `{"status": "ok"}` when the server is running.
 ## Models
 
 ### SARIMA (Baseline)
-- **Order**: ARMA(1,0,1) -- no differencing, no seasonal component
+- **Order**: ARMA(1,0,1) -- no differencing, seasonal component (1,0,1,24)
 - **Training**: Fits on the full hourly series
 - **Inference**: ~1 second per forecast
 

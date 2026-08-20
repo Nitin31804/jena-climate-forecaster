@@ -52,7 +52,7 @@ def load_sarima_model():
         raise FileNotFoundError("{} not found - run export_hourly.py first.".format(DATA_CSV))
     df = pd.read_csv(DATA_CSV, parse_dates=["Date Time"], index_col="Date Time")
     series = df[TARGET]
-    model = SARIMAX(series, order=(1, 1, 1), enforce_stationarity=False, enforce_invertibility=False)
+    model = SARIMAX(series, order=(1, 1, 1), seasonal_order=(1, 0, 1, 24), enforce_stationarity=False, enforce_invertibility=False)
     results = model.fit(disp=False, maxiter=100)
     # Cache the fitted model
     os.makedirs(os.path.dirname(SARIMA_PICKLE), exist_ok=True)

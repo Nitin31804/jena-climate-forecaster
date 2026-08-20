@@ -87,7 +87,7 @@ try:
     tft = TemporalFusionTransformer.from_dataset(
         training,
         learning_rate=1e-3,
-        hidden_size=16,
+        hidden_size=64,
         attention_head_size=1,
         dropout=0.1,
         loss=QuantileLoss(),
