@@ -1,129 +1,76 @@
-# train_tft.py
-"""
-Train a Temporal Fusion Transformer (TFT) on the hourly Jena Climate data.
-The script:
-1. Loads df_hourly.csv with correct 'Date Time' column.
-2. Performs a simple train/validation split (last 720 rows for validation).
-3. Defines a TimeSeriesDataSet for PyTorch Forecasting.
-4. Trains the TFT for 2 epochs on CPU.
-5. Saves the trained model state dict to tft_checkpoint.pth.
-"""
+"""Train a TFT with disjoint time splits and persist its fitted preprocessing."""
+import argparse
+import copy
+import os
 
-import sys
+from forecast_api.config import ENCODER_LENGTH, FORMAT_VERSION, MAX_HORIZON, QUANTILES, SEED, TFT_PATH, TFT_SPEC
+from forecast_api.data import historical_data
+from forecast_api.training import provenance, tft_datasets
 
-try:
-    import pandas as pd
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--train-batches", type=int, default=100, help="Maximum batches per epoch; use 0 for all")
+    parser.add_argument("--val-batches", type=int, default=30, help="Maximum validation batches; use 0 for all")
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--accelerator", choices=["cpu", "gpu", "auto"], default="cpu")
+    args = parser.parse_args()
+    if min(args.epochs, args.batch_size, args.threads) < 1 or min(args.train_batches, args.val_batches) < 0:
+        parser.error("Epochs, batch size, and threads must be positive; batch limits must be nonnegative.")
+
     import torch
     import lightning.pytorch as pl
-    from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
-    from pytorch_forecasting.data import GroupNormalizer
+    from pytorch_forecasting import TemporalFusionTransformer
     from pytorch_forecasting.metrics import QuantileLoss
 
-    DATA_PATH = "df_hourly.csv"
-    CHECKPOINT_PATH = "tft_checkpoint.pth"
-    TARGET = "T (degC)"
+    class BestValidation(pl.Callback):
+        def __init__(self):
+            self.best = float("inf")
+            self.state = None
+            self.epoch = None
 
-    # ------------------------------------------------------------------
-    # 1. Load data
-    # ------------------------------------------------------------------
-    print("Loading data from: " + DATA_PATH)
-    df = pd.read_csv(DATA_PATH, parse_dates=["Date Time"])
-    print("Loaded dataframe with shape: " + str(df.shape))
+        def on_validation_end(self, trainer, model):
+            value = trainer.callback_metrics.get("val_loss")
+            if not trainer.sanity_checking and value is not None:
+                print(f"Epoch {trainer.current_epoch + 1}: validation quantile loss={float(value):.4f}", flush=True)
+            if not trainer.sanity_checking and value is not None and float(value) < self.best:
+                self.best = float(value)
+                self.epoch = trainer.current_epoch + 1
+                self.state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
-    # ------------------------------------------------------------------
-    # 2. Create integer time_idx column (row number)
-    # ------------------------------------------------------------------
-    df = df.reset_index(drop=True)
-    df["time_idx"] = df.index
-
-    # ------------------------------------------------------------------
-    # 3. Add constant group_id column (string)
-    # ------------------------------------------------------------------
-    df["series_id"] = "0"
-
-    # Keep only needed columns
-    df = df[["time_idx", "series_id", TARGET]].copy()
-    print("Columns kept: " + str(list(df.columns)))
-    print("First 3 rows:")
-    print(df.head(3).to_string())
-
-    # ------------------------------------------------------------------
-    # 4. Train/validation split: last 720 rows for validation
-    # ------------------------------------------------------------------
-    max_idx = df["time_idx"].max()
-    val_cutoff = max_idx - 720
-    train_df = df[df["time_idx"] <= val_cutoff].copy()
-    val_df = df[df["time_idx"] > val_cutoff].copy()
-    print("Train size: " + str(len(train_df)) + " | Val size: " + str(len(val_df)))
-
-    # ------------------------------------------------------------------
-    # 5. Define TimeSeriesDataSet
-    # ------------------------------------------------------------------
-    max_encoder_length = 168
-    max_prediction_length = 168
-
-    training = TimeSeriesDataSet(
-        train_df,
-        time_idx="time_idx",
-        target=TARGET,
-        group_ids=["series_id"],
-        max_encoder_length=max_encoder_length,
-        max_prediction_length=max_prediction_length,
-        time_varying_known_reals=["time_idx"],
-        time_varying_unknown_reals=[TARGET],
-        target_normalizer=GroupNormalizer(groups=["series_id"]),
-    )
-
-    validation = TimeSeriesDataSet.from_dataset(training, val_df)
-
-    # Dataloaders
-    train_loader = training.to_dataloader(train=True, batch_size=64, num_workers=0)
-    val_loader = validation.to_dataloader(train=False, batch_size=64, num_workers=0)
-    print("Dataloaders created successfully.")
-
-    # ------------------------------------------------------------------
-    # 6. Model definition (small model for quick demo)
-    # ------------------------------------------------------------------
-    tft = TemporalFusionTransformer.from_dataset(
-        training,
-        learning_rate=1e-3,
-        hidden_size=64,
-        attention_head_size=1,
-        dropout=0.1,
-        loss=QuantileLoss(),
-        log_interval=10,
-        reduce_on_plateau_patience=2,
-    )
-    print("TFT model created. Parameters: " + str(tft.size()))
-
-    # ------------------------------------------------------------------
-    # 7. Trainer from pytorch_lightning (CPU only)
-    # ------------------------------------------------------------------
+    pl.seed_everything(SEED, workers=True)
+    torch.set_num_threads(args.threads)
+    history, digest = historical_data()
+    training, validation, train_frame = tft_datasets(history)
+    model = TemporalFusionTransformer.from_dataset(training, **TFT_SPEC, loss=QuantileLoss(quantiles=QUANTILES))
+    best = BestValidation()
     trainer = pl.Trainer(
-        accelerator="cpu",
-        max_epochs=10,
-        gradient_clip_val=0.1,
-        limit_train_batches=300,
-        limit_val_batches=50,
-        enable_progress_bar=False,
-        enable_model_summary=False,
-        logger=False,
-        enable_checkpointing=False,
+        accelerator=args.accelerator, devices=1, max_epochs=args.epochs,
+        gradient_clip_val=0.1, limit_train_batches=args.train_batches or 1.0,
+        limit_val_batches=args.val_batches or 1.0, deterministic=True,
+        enable_progress_bar=False, enable_model_summary=False, logger=False,
+        enable_checkpointing=False, callbacks=[best], num_sanity_val_steps=0,
     )
+    trainer.fit(model,
+                train_dataloaders=training.to_dataloader(train=True, batch_size=args.batch_size, num_workers=0),
+                val_dataloaders=validation.to_dataloader(train=False, batch_size=args.batch_size, num_workers=0))
+    if best.state is None:
+        raise RuntimeError("No finite validation loss was recorded; no artifact was replaced.")
+    metadata = provenance("tft", history, digest)
+    metadata.update(training_options=vars(args), best_epoch=best.epoch, validation_loss=best.best,
+                    parameters=model.size(), quantile_rearrangement=True)
+    bundle = {"format_version": FORMAT_VERSION, "metadata": metadata,
+              "state_dict": best.state, "model_config": copy.deepcopy(TFT_SPEC),
+              "quantiles": QUANTILES, "dataset_parameters": training.get_parameters(),
+              "dataset_sample": train_frame.tail(ENCODER_LENGTH + MAX_HORIZON).copy()}
+    TFT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = TFT_PATH.with_suffix(".tmp")
+    torch.save(bundle, temporary)
+    os.replace(temporary, TFT_PATH)
+    print(f"Saved {TFT_PATH}; best epoch={best.epoch}, validation quantile loss={best.best:.4f}")
 
-    print("Starting training...")
-    trainer.fit(tft, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    print("Training finished.")
 
-    # ------------------------------------------------------------------
-    # 8. Save model state dict
-    # ------------------------------------------------------------------
-    torch.save(tft.state_dict(), CHECKPOINT_PATH)
-    print("Model state dict saved to: " + CHECKPOINT_PATH)
-    print("TFT training completed successfully.")
-
-except Exception as e:
-    print("ERROR during TFT training: " + str(e))
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+if __name__ == "__main__":
+    main()

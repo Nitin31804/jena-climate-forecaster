@@ -1,97 +1,84 @@
-# forecast_api/main.py
-"""FastAPI application exposing a temperature forecast endpoint.
-
-Endpoint:
-    GET /forecast?city=Jena&horizon=24&model=tft
-
-Parameters
-    city (str): Currently only "Jena" is supported (dataset is Jena climate).
-    horizon (int): Number of future hours to predict (default 24, max 168).
-    model (str): Which model to use - "tft" or "sarima". Default is "sarima".
-
-Response (JSON):
-    {
-        "city": "Jena",
-        "model": "sarima",
-        "horizon": 24,
-        "forecast": [list of point predictions],
-        "lower_ci": [list of lower bound],
-        "upper_ci": [list of upper bound],
-        "timestamp": "ISO-8601 time when forecast was generated"
-    }
-"""
+"""Forecast API and same-origin dashboard."""
+import logging
+import os
+from datetime import datetime
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional
-import datetime
 
-from .utils import load_sarima_model, load_tft_model, forecast_sarima, forecast_tft
+from .config import ROOT
+from .data import DataUnavailable, LiveDataUnavailable, historical_data
+from .models import ModelUnavailable, load_sarima, load_tft
+from .utils import forecast
 
-app = FastAPI(title="Weather Forecast API", version="0.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logger = logging.getLogger(__name__)
+app = FastAPI(title="Jena Climate Forecaster", version="1.0.0")
+origins = [origin.strip() for origin in os.getenv("JENA_CORS_ORIGINS", "").split(",") if origin.strip()]
+if origins:
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET"], allow_headers=["*"])
+app.mount("/static", StaticFiles(directory=ROOT / "frontend"), name="static")
 
 
 class ForecastResponse(BaseModel):
     city: str
-    model: str
+    model: Literal["sarima", "tft"]
     horizon: int
-    forecast: List[float]
-    lower_ci: Optional[List[float]] = None
-    upper_ci: Optional[List[float]] = None
-    timestamp: datetime.datetime
+    forecast: list[float]
+    lower_ci: list[float]
+    upper_ci: list[float]
+    forecast_timestamps: list[str]
+    data_cutoff: str
+    timezone: str
+    mode: Literal["historical", "live"]
+    data_source: str
+    model_version: str
+    trained_through: str
+    interval_level: float
+    interval_method: str
+    history_timestamps: list[str]
+    history: list[float]
+    timestamp: datetime
+
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(ROOT / "frontend" / "index.html")
 
 
 @app.get("/forecast", response_model=ForecastResponse)
-def get_forecast(
-    city: str = Query("Jena", description="City name (only Jena supported for demo)"),
-    horizon: int = Query(24, ge=1, le=168, description="Number of hours to forecast"),
-    model: str = Query("sarima", description="Model to use: sarima or tft"),
-    use_live_data: bool = Query(False, description="Fetch live weather data for Jena from open-meteo"),
-):
-    if city.lower() != "jena":
-        raise HTTPException(status_code=400, detail="Only Jena dataset is available in this demo.")
-
-    if model not in ("sarima", "tft"):
-        raise HTTPException(status_code=400, detail="Model must be 'sarima' or 'tft'.")
-
-    if model == "sarima":
-        sarima = load_sarima_model()
-        preds, lower, upper = forecast_sarima(sarima, horizon, use_live_data)
-        return ForecastResponse(
-            city=city,
-            model=model,
-            horizon=horizon,
-            forecast=preds,
-            lower_ci=lower,
-            upper_ci=upper,
-            timestamp=datetime.datetime.utcnow(),
-        )
-    elif model == "tft":
-        try:
-            tft, dataset = load_tft_model()
-            preds, lower, upper = forecast_tft(tft, dataset, horizon, use_live_data)
-            return ForecastResponse(
-                city=city,
-                model=model,
-                horizon=horizon,
-                forecast=preds,
-                lower_ci=lower,
-                upper_ci=upper,
-                timestamp=datetime.datetime.utcnow(),
-            )
-        except FileNotFoundError as e:
-            raise HTTPException(status_code=503, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="TFT inference error: " + str(e))
+def get_forecast(city: str = "Jena", horizon: int = Query(24, ge=1, le=168),
+                 model: Literal["sarima", "tft"] = "sarima", use_live_data: bool = False):
+    if city.strip().lower() != "jena":
+        raise HTTPException(400, "Only Jena is supported.")
+    try:
+        return forecast(model, horizon, use_live_data)
+    except (DataUnavailable, ModelUnavailable) as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except LiveDataUnavailable as exc:
+        raise HTTPException(502, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Forecast failed for %s", model)
+        raise HTTPException(500, "Forecast could not be generated. Check the server log.") from exc
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    """Liveness only; /ready verifies model and data availability."""
+    return {"status": "ok", "version": app.version}
+
+
+@app.get("/ready")
+def ready(model: Literal["sarima", "tft"] = "sarima"):
+    try:
+        _, digest = historical_data()
+        loaded = load_sarima() if model == "sarima" else load_tft()
+        meta = loaded["metadata"] if model == "sarima" else loaded[2]
+        if meta["data_fingerprint"] != digest:
+            raise ModelUnavailable("Data changed after training. Retrain the model.")
+        return {"status": "ready", "model": model, "model_version": meta["version"]}
+    except (DataUnavailable, ModelUnavailable) as exc:
+        return JSONResponse(status_code=503, content={"status": "not_ready", "detail": str(exc)})

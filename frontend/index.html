@@ -1,44 +1,200 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Jena Climate Forecaster</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }</style>
-</head>
-<body>
-    <h2>Jena Climate Forecast</h2>
-    <div>
-        <label>Model: <select id="model"><option value="sarima">SARIMA</option><option value="tft">TFT</option></select></label>
-        <label>Horizon: <input type="number" id="horizon" value="48" max="168" min="1"></label>
-        <button onclick="fetchForecast()">Get Forecast</button>
-        &nbsp;&nbsp;<label><input type="checkbox" id="live"> Use Live Data</label>
-    </div>
-    <canvas id="chart" width="400" height="200"></canvas>
-    <script>
-        let chart = null;
-        async function fetchForecast() {
-            const model = document.getElementById('model').value;
-            const horizon = document.getElementById('horizon').value;
-            const live = document.getElementById('live').checked;
-            const res = await fetch(`http://127.0.0.1:8000/forecast?model=${model}&horizon=${horizon}&use_live_data=${live}`);
-            const data = await res.json();
-            
-            const labels = Array.from({length: data.horizon}, (_, i) => `+${i+1}h`);
-            
-            if (chart) chart.destroy();
-            const ctx = document.getElementById('chart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Forecast (degC)', data: data.forecast, borderColor: 'blue', fill: false },
-                        { label: 'Lower CI', data: data.lower_ci, borderColor: 'rgba(0,0,255,0.2)', backgroundColor: 'rgba(0,0,255,0.1)', fill: '+1' },
-                        { label: 'Upper CI', data: data.upper_ci, borderColor: 'rgba(0,0,255,0.2)', fill: false }
-                    ]
-                }
-            });
-        }
-    </script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore hourly temperature forecasts for Jena with historical and recent weather data."
+    />
+    <title>Jena · Climate Observatory</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Jena home"
+        ><span class="brand-icon">◒</span> JENA
+        <span class="brand-detail">CLIMATE OBSERVATORY</span></a
+      ><a class="api-link" href="/docs">API documentation ↗</a>
+    </header>
+    <main>
+      <div class="heading">
+        <div>
+          <p class="eyebrow">50.9272° N &nbsp; 11.5861° E / GERMANY</p>
+          <h1>A clearer view of<br />what comes next<span>.</span></h1>
+          <p class="intro">
+            Explore temperature patterns. Compare models. Understand
+            uncertainty.
+          </p>
+        </div>
+        <div class="location">
+          <span class="location-dot"></span> Jena, Thuringia
+          <span>Hourly temperature · °C</span>
+        </div>
+      </div>
+      <section class="workspace" aria-label="Forecast explorer">
+        <aside class="controls">
+          <div class="section-label"><span>01</span> CONFIGURE FORECAST</div>
+          <form id="forecast-form">
+            <label for="mode">Data source</label>
+            <select id="mode">
+              <option value="historical">Historical dataset</option>
+              <option value="live">Recent weather</option>
+            </select>
+            <p id="mode-help" class="help">
+              Explore a forecast after the dataset ends in 2017.
+            </p>
+            <label for="model">Forecast model</label>
+            <select id="model">
+              <option value="sarima">SARIMA · Statistical</option>
+              <option value="tft">TFT · Neural network</option>
+            </select>
+            <p id="model-help" class="help">
+              Captures temperature trends and the daily cycle.
+            </p>
+            <label for="horizon"
+              >Forecast horizon <span id="horizon-value">24 hours</span></label
+            >
+            <input type="range" id="horizon" min="1" max="168" value="24" />
+            <div class="range-labels">
+              <span>1 hour</span><span>7 days</span>
+            </div>
+            <button id="submit" type="submit">
+              Generate forecast <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+          <div class="context-note">
+            <span class="note-icon">i</span>
+            <div>
+              <strong>A model, with uncertainty.</strong>
+              <p>
+                The shaded band represents model uncertainty. Actual
+                temperatures can fall outside it.
+              </p>
+            </div>
+          </div>
+          <a href="#methodology" class="method-link">About the models ↓</a>
+        </aside>
+        <div class="results">
+          <div class="result-header">
+            <div class="section-label"><span>02</span> TEMPERATURE OUTLOOK</div>
+            <span id="mode-badge" class="badge">HISTORICAL DEMO</span>
+          </div>
+          <p id="status" class="status" role="status" aria-live="polite">
+            Preparing your forecast…
+          </p>
+          <div id="error" class="error" role="alert" hidden></div>
+          <div id="output" hidden>
+            <div class="metrics">
+              <div>
+                <p>Latest available</p>
+                <strong id="latest">—</strong><small id="latest-date"></small>
+              </div>
+              <div>
+                <p>Forecast average</p>
+                <strong id="average">—</strong
+                ><small id="forecast-span"></small>
+              </div>
+              <div>
+                <p>Forecast range</p>
+                <strong id="range">—</strong
+                ><small>Lowest to highest point forecast</small>
+              </div>
+            </div>
+            <div class="chart-header">
+              <h2>Temperature over time</h2>
+              <div class="legend">
+                <span><i class="history-key"></i>History</span
+                ><span><i class="forecast-key"></i>Forecast</span
+                ><span id="interval-legend">Uncertainty</span>
+              </div>
+            </div>
+            <div id="chart-wrap">
+              <svg
+                id="chart"
+                viewBox="0 0 900 350"
+                role="img"
+                aria-labelledby="chart-title chart-desc"
+              ></svg>
+            </div>
+            <p id="chart-note" class="chart-note"></p>
+            <div class="data-footer">
+              <span id="updated"></span
+              ><button id="download" class="text-button" type="button">
+                Download CSV ↓
+              </button>
+            </div>
+            <details>
+              <summary>View hourly forecast</summary>
+              <div class="table-wrap">
+                <table>
+                  <caption id="table-caption">
+                    Hourly temperature forecast
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Date & time</th>
+                      <th scope="col">Forecast</th>
+                      <th scope="col">Lower</th>
+                      <th scope="col">Upper</th>
+                    </tr>
+                  </thead>
+                  <tbody id="forecast-table"></tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+          <div id="empty" class="empty">
+            <div class="empty-lines"></div>
+            <p>Preparing the next chapter of the weather.</p>
+            <small
+              >Forecasts appear here with 48 hours of recent history.</small
+            >
+          </div>
+        </div>
+      </section>
+      <section id="methodology" class="methodology">
+        <div>
+          <p class="eyebrow">BEHIND THE FORECAST</p>
+          <h2>
+            Two approaches.<br />
+            One changing climate.
+          </h2>
+        </div>
+        <article>
+          <span class="method-number">01 / SARIMA</span>
+          <h3>The daily rhythm</h3>
+          <p>
+            A seasonal statistical model that uses past temperature and a
+            24-hour cycle. Its shaded band is a 95% model interval.
+          </p>
+        </article>
+        <article>
+          <span class="method-number">02 / TEMPORAL FUSION TRANSFORMER</span>
+          <h3>Learning from context</h3>
+          <p>
+            A neural network using a week of temperature history, rolling
+            averages, and calendar cycles. Its band spans the 5th to 95th
+            predicted quantiles.
+          </p>
+        </article>
+      </section>
+      <footer>
+        <span>JENA / CLIMATE OBSERVATORY</span>
+        <p>
+          Historical source: Jena Climate dataset · Recent weather:
+          <a
+            href="https://open-meteo.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Open-Meteo</a
+          ><br />Research demonstration. Recent weather is model-derived and
+          differs from station measurements.
+        </p>
+        <span id="model-version"></span>
+      </footer>
+    </main>
+  </body>
 </html>

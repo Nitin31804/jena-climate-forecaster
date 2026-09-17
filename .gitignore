@@ -65,6 +65,11 @@ coverage.xml
 # Model checkpoints (large - regenerate via train_tft.py)
 *.pth
 *.ckpt
+artifacts/
+*.download
+*.tmp
+test-results/
+pytest-cache-files-*/
 forecast_api/models/*.pkl
 
 # Lightning training logs

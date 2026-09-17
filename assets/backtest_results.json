@@ -1,0 +1,396 @@
+{
+  "generated_at": "2026-09-16T16:46:15.165867+00:00",
+  "data_fingerprint": "2da93ccf96fba6c453342314e022c22ee1abf0cbe9bcae6facd18d6a4eaeb7f9",
+  "horizon": 24,
+  "windows": 12,
+  "artifacts": {
+    "sarima": {
+      "model": "sarima",
+      "version": "sarima-727c977c3895",
+      "created_at": "2026-09-16T16:30:56.533282+00:00",
+      "seed": 42,
+      "data_fingerprint": "2da93ccf96fba6c453342314e022c22ee1abf0cbe9bcae6facd18d6a4eaeb7f9",
+      "training_rows": 49073,
+      "trained_through": "2014-08-08T16:00:00",
+      "validation_through": "2015-10-20T20:00:00",
+      "test_start": "2015-10-20T21:00:00",
+      "data_timezone": "Dataset local time (offset unspecified)",
+      "dependencies": {
+        "numpy": "1.26.4",
+        "pandas": "2.3.2",
+        "statsmodels": "0.14.6"
+      },
+      "converged": true,
+      "fit_context_hours": 720
+    },
+    "tft": {
+      "model": "tft",
+      "version": "tft-e6458b494b8c",
+      "created_at": "2026-09-16T16:43:22.283098+00:00",
+      "seed": 42,
+      "data_fingerprint": "2da93ccf96fba6c453342314e022c22ee1abf0cbe9bcae6facd18d6a4eaeb7f9",
+      "training_rows": 49073,
+      "trained_through": "2014-08-08T16:00:00",
+      "validation_through": "2015-10-20T20:00:00",
+      "test_start": "2015-10-20T21:00:00",
+      "data_timezone": "Dataset local time (offset unspecified)",
+      "dependencies": {
+        "numpy": "1.26.4",
+        "pandas": "2.3.2",
+        "statsmodels": "0.14.6",
+        "torch": "2.14.0",
+        "lightning": "2.6.6",
+        "pytorch-forecasting": "1.8.0"
+      },
+      "training_options": {
+        "epochs": 10,
+        "train_batches": 100,
+        "val_batches": 30,
+        "batch_size": 32,
+        "threads": 4,
+        "accelerator": "cpu"
+      },
+      "best_epoch": 6,
+      "validation_loss": 1.4818122386932373,
+      "parameters": 20981,
+      "quantile_rearrangement": true
+    }
+  },
+  "method": "Frozen parameters; expanding available history; disjoint held-out target windows",
+  "summary": [
+    {
+      "model": "Persistence",
+      "mae_c": 2.3544675925925924,
+      "rmse_c": 3.133310569878897
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "mae_c": 2.8786863425925926,
+      "rmse_c": 3.709804073985729
+    },
+    {
+      "model": "SARIMA",
+      "mae_c": 2.227686667306087,
+      "rmse_c": 2.8631008071608908
+    },
+    {
+      "model": "TFT",
+      "mae_c": 2.4689919592716074,
+      "rmse_c": 3.256802572752564
+    }
+  ],
+  "results": [
+    {
+      "model": "Persistence",
+      "forecast_start": "2015-10-20T21:00:00",
+      "mae_c": 0.8487500000000002,
+      "rmse_c": 0.9836521375861378
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2015-10-20T21:00:00",
+      "mae_c": 0.7865277777777777,
+      "rmse_c": 0.8996862879174422
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2015-10-20T21:00:00",
+      "mae_c": 0.7560403804244161,
+      "rmse_c": 0.9323354186342908,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2015-10-20T21:00:00",
+      "mae_c": 0.6377939062648346,
+      "rmse_c": 0.7893361091982596,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2015-11-28T21:00:00",
+      "mae_c": 2.6627083333333332,
+      "rmse_c": 3.291697415468196
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2015-11-28T21:00:00",
+      "mae_c": 4.777986111111111,
+      "rmse_c": 4.961482718289855
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2015-11-28T21:00:00",
+      "mae_c": 2.798978396756809,
+      "rmse_c": 3.2026960362937493,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2015-11-28T21:00:00",
+      "mae_c": 2.0359201200803123,
+      "rmse_c": 2.3636282666159385,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-01-06T21:00:00",
+      "mae_c": 3.0148611111111108,
+      "rmse_c": 4.343712703010675
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-01-06T21:00:00",
+      "mae_c": 3.3572222222222217,
+      "rmse_c": 4.314910759344985
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-01-06T21:00:00",
+      "mae_c": 3.6024034858800804,
+      "rmse_c": 4.375803338535171,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-01-06T21:00:00",
+      "mae_c": 1.899448824458652,
+      "rmse_c": 2.1738897448452805,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-02-15T21:00:00",
+      "mae_c": 2.2019444444444445,
+      "rmse_c": 2.3661102632332622
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-02-15T21:00:00",
+      "mae_c": 4.942638888888888,
+      "rmse_c": 5.009268354205476
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-02-15T21:00:00",
+      "mae_c": 1.9658285517854825,
+      "rmse_c": 2.5951338273825333,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-02-15T21:00:00",
+      "mae_c": 4.200700949298011,
+      "rmse_c": 4.676433028798913,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-03-25T21:00:00",
+      "mae_c": 2.4330555555555557,
+      "rmse_c": 3.413251511334849
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-03-25T21:00:00",
+      "mae_c": 1.9209722222222225,
+      "rmse_c": 2.5572707710166904
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-03-25T21:00:00",
+      "mae_c": 2.8173027957283074,
+      "rmse_c": 3.14434950839492,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-03-25T21:00:00",
+      "mae_c": 0.8800383151902093,
+      "rmse_c": 1.1048471667734328,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-05-03T21:00:00",
+      "mae_c": 2.2411805555555553,
+      "rmse_c": 2.6491046924001127
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-05-03T21:00:00",
+      "mae_c": 2.953888888888889,
+      "rmse_c": 3.7330626451966977
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-05-03T21:00:00",
+      "mae_c": 2.147710412313266,
+      "rmse_c": 2.2665059916969765,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-05-03T21:00:00",
+      "mae_c": 2.2401416097746956,
+      "rmse_c": 2.4609115643544937,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-06-12T21:00:00",
+      "mae_c": 2.072569444444444,
+      "rmse_c": 2.486499123973004
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-06-12T21:00:00",
+      "mae_c": 1.2309027777777777,
+      "rmse_c": 1.510888068200166
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-06-12T21:00:00",
+      "mae_c": 3.0755999335867235,
+      "rmse_c": 3.2386431324253597,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-06-12T21:00:00",
+      "mae_c": 1.1485400909847685,
+      "rmse_c": 1.3376131854116318,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-07-21T21:00:00",
+      "mae_c": 4.837986111111112,
+      "rmse_c": 5.557643395877496
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-07-21T21:00:00",
+      "mae_c": 5.530555555555556,
+      "rmse_c": 6.011088596178825
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-07-21T21:00:00",
+      "mae_c": 4.032753305457587,
+      "rmse_c": 4.952282439160131,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-07-21T21:00:00",
+      "mae_c": 3.662337038781908,
+      "rmse_c": 4.35011201920186,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-08-29T21:00:00",
+      "mae_c": 2.5138194444444446,
+      "rmse_c": 3.15337541447726
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-08-29T21:00:00",
+      "mae_c": 3.6820833333333325,
+      "rmse_c": 4.105413600763428
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-08-29T21:00:00",
+      "mae_c": 1.1263223191138605,
+      "rmse_c": 1.2809080416077572,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-08-29T21:00:00",
+      "mae_c": 1.1673657502068415,
+      "rmse_c": 1.4543246434051005,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-10-08T21:00:00",
+      "mae_c": 1.0822222222222224,
+      "rmse_c": 1.2163615484989099
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-10-08T21:00:00",
+      "mae_c": 0.5940277777777776,
+      "rmse_c": 0.7284992183325325
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-10-08T21:00:00",
+      "mae_c": 1.2213028356296105,
+      "rmse_c": 1.5097128018940893,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-10-08T21:00:00",
+      "mae_c": 1.2878639920552573,
+      "rmse_c": 1.5542520893033984,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-11-20T21:00:00",
+      "mae_c": 1.3590972222222222,
+      "rmse_c": 1.6424780496306535
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-11-20T21:00:00",
+      "mae_c": 3.293472222222222,
+      "rmse_c": 4.13731769207843
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-11-20T21:00:00",
+      "mae_c": 1.1972092387460338,
+      "rmse_c": 1.392409166877464,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-11-20T21:00:00",
+      "mae_c": 4.439326842361026,
+      "rmse_c": 4.516477055936186,
+      "interval_coverage": 0.9166666666666666
+    },
+    {
+      "model": "Persistence",
+      "forecast_start": "2016-12-30T21:00:00",
+      "mae_c": 2.985416666666667,
+      "rmse_c": 3.4180834799527537
+    },
+    {
+      "model": "Seasonal naive (24h)",
+      "forecast_start": "2016-12-30T21:00:00",
+      "mae_c": 1.4739583333333333,
+      "rmse_c": 1.6189180700679675
+    },
+    {
+      "model": "SARIMA",
+      "forecast_start": "2016-12-30T21:00:00",
+      "mae_c": 1.9907883522508687,
+      "rmse_c": 2.3372235086246347,
+      "interval_coverage": 1.0
+    },
+    {
+      "model": "TFT",
+      "forecast_start": "2016-12-30T21:00:00",
+      "mae_c": 6.028426071802776,
+      "rmse_c": 6.446531011158465,
+      "interval_coverage": 0.4166666666666667
+    }
+  ]
+}

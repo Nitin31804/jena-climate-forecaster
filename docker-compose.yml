@@ -1,8 +1,19 @@
-version: '3.8'
 services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - .:/app
+      - type: bind
+        source: ./df_hourly.csv
+        target: /app/df_hourly.csv
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./artifacts
+        target: /app/artifacts
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped

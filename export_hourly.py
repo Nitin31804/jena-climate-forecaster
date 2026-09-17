@@ -1,55 +1,67 @@
-# export_hourly.py
-"""Extract the Jena Climate CSV, resample to hourly, engineer features, and save to CSV.
-This script mirrors the preprocessing steps from the notebook so that downstream
-scripts (TFT training, backtest) can load a ready‑to‑use file.
-"""
-
+"""Download Jena observations and produce causal hourly features."""
+import argparse
 import os
-import pandas as pd
+from pathlib import Path
+from urllib.request import urlopen
+from zipfile import ZipFile
+import shutil
+
 import numpy as np
+import pandas as pd
 
-# 1. Download the dataset (same as notebook) – TensorFlow utility
-import urllib.request
-import zipfile
-# Download the dataset zip file
-zip_url = 'https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip'
-zip_path = os.path.join(os.getcwd(), 'jena_climate_2009_2016.csv.zip')
-if not os.path.exists(zip_path):
-    urllib.request.urlretrieve(zip_url, zip_path)
-# Extract the CSV from the zip
-with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-    zip_ref.extractall(os.getcwd())
-# The extracted CSV file name
-csv_path = os.path.join(os.getcwd(), 'jena_climate_2009_2016.csv')
+from forecast_api.config import DATA_PATH, DATE, ROOT, TARGET
+from forecast_api.data import features, validate_history
 
-# 2. Load raw data
-df = pd.read_csv(csv_path)
+URL = "https://storage.googleapis.com/tensorflow/tf-keras-datasets/jena_climate_2009_2016.csv.zip"
 
-# 3. Parse datetime and set index
-if 'Date Time' in df.columns:
-    df['Date Time'] = pd.to_datetime(df['Date Time'], format='%d.%m.%Y %H:%M:%S')
-    df.set_index('Date Time', inplace=True)
 
-# 4. Resample to hourly (mean) and interpolate missing values
-df_hourly = df.resample('H').mean()
-df_hourly = df_hourly.interpolate(method='linear')
+def preprocess(raw):
+    raw = raw.copy()
+    raw[DATE] = pd.to_datetime(raw[DATE], format="%d.%m.%Y %H:%M:%S", errors="raise")
+    numeric = raw.set_index(DATE).apply(pd.to_numeric, errors="coerce")
+    numeric = numeric.mask(numeric <= -999)
+    # Label the hour by its END: all observations are available by its timestamp.
+    hourly = numeric.resample("h", closed="right", label="right").mean()
+    observed = hourly[TARGET].notna()
+    # Causal imputation keeps an hourly grid without borrowing future observations.
+    # Preserve a mask so imputed temperatures never become evaluation targets.
+    hourly = hourly.ffill()
+    base = validate_history(hourly.reset_index())
+    engineered = features(base).set_index(DATE)
+    result = hourly.loc[engineered.index].copy()
+    result["temperature_observed"] = observed.loc[engineered.index]
+    for col in ["temperature_mean_6h", "temperature_mean_24h", "day_sin", "day_cos", "year_sin", "year_cos"]:
+        result[col] = engineered[col]
+    if not np.isfinite(result[TARGET]).all():
+        raise ValueError("Temperature gaps remain after limited forward filling.")
+    return result
 
-# 5. Feature engineering (same as notebook)
-# Rolling temperature means
-df_hourly['T_rolling_6h'] = df_hourly['T (degC)'].rolling(window=6).mean()
-df_hourly['T_rolling_24h'] = df_hourly['T (degC)'].rolling(window=24).mean()
-# Cyclical time features
-day = 24 * 60 * 60
-year = 365.2425 * day
-timestamp_s = df_hourly.index.map(pd.Timestamp.timestamp)
-df_hourly['Day sin'] = np.sin(timestamp_s * (2 * np.pi / day))
-df_hourly['Day cos'] = np.cos(timestamp_s * (2 * np.pi / day))
-df_hourly['Year sin'] = np.sin(timestamp_s * (2 * np.pi / year))
-df_hourly['Year cos'] = np.cos(timestamp_s * (2 * np.pi / year))
-# Drop rows with NaNs from rolling windows
-df_hourly.dropna(inplace=True)
 
-# 6. Save to CSV in workspace root
-out_path = 'df_hourly.csv'
-df_hourly.to_csv(out_path)
-print(f"Hourly pre-processed data saved to {out_path} with {len(df_hourly)} rows")
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--raw-csv", type=Path, help="Use an existing raw CSV instead of downloading")
+    args = parser.parse_args()
+    if args.raw_csv:
+        raw = pd.read_csv(args.raw_csv)
+    else:
+        archive = ROOT / "jena_climate_2009_2016.csv.zip"
+        if not archive.exists():
+            temporary = archive.with_suffix(".download")
+            try:
+                with urlopen(URL, timeout=30) as source, temporary.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+                os.replace(temporary, archive)
+            finally:
+                temporary.unlink(missing_ok=True)
+        with ZipFile(archive) as zipped, zipped.open("jena_climate_2009_2016.csv") as csv:
+            raw = pd.read_csv(csv)
+    hourly = preprocess(raw)
+    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = DATA_PATH.with_suffix(".csv.tmp")
+    hourly.to_csv(temporary)
+    os.replace(temporary, DATA_PATH)
+    print(f"Saved {len(hourly):,} hourly rows to {DATA_PATH}. Retrain both models after changing data.")
+
+
+if __name__ == "__main__":
+    main()

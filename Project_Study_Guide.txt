@@ -1,0 +1,27 @@
+JENA CLIMATE FORECASTER — STUDY GUIDE
+
+Use README.md for runnable commands and assets/backtest_results.json for measured results.
+
+1. PURPOSE
+Forecast Jena temperature 1–168 hours ahead. Historical mode begins after the station dataset ends in January 2017. Recent mode uses Open-Meteo model-derived weather, not direct station measurements.
+
+2. PREPROCESSING
+Hourly end-labeled means; sentinel cleanup; causal forward filling with an observation mask. Rolling 6h/24h temperature means and daily/yearly sine/cosine features. Imputed target windows are excluded from TFT training/validation and evaluation.
+
+3. SARIMA
+Order (1,1,1), seasonal order (1,0,1,24). Fit on up to 720 hours from the training split. Store compact parameters with provenance. Filter available history at inference without refitting. Nominal 95% model interval.
+
+4. TFT
+Hidden size 16, 168-hour encoder, 168-hour decoder. Past temperature, rolling means, and calendar features are used. Pressure, humidity, and wind are not TFT inputs. Only calendar covariates enter the future decoder. Save fitted preprocessing with architecture and weights. Select the best validation epoch. Median prediction and ordered 5th/95th quantiles give a nominal 90% interval. Longer training does not guarantee superiority.
+
+5. VALIDATION
+Chronological 70/15/15 split. Normalizers fit only on training data. Backtest frozen models on non-overlapping held-out windows. Include persistence and 24-hour seasonal naive baselines. Report MAE/RMSE in degrees Celsius and interval coverage. Do not use old MAPE scores as evidence.
+
+6. APPLICATION
+FastAPI serves a responsive HTML/CSS/JavaScript dashboard. Relative requests eliminate hardcoded localhost API URLs. SVG charts include past history, future dates, uncertainty, and an accessible table. The response reports source, cutoff, timezone, model version, and interval method. Model artifacts and forecast results are cached. Missing assets and upstream failures receive clear error responses.
+
+7. ENGINEERING
+Shared configuration, import-safe training scripts, pinned direct dependencies, regression tests, test-before-build CI, and a non-root Docker image with read-only data/artifact mounts. The historical notebook remains exploratory and is explicitly labeled as such.
+
+8. LIMITATIONS
+Finite training budget, sampled evaluation windows, imputed historical context, unspecified original timestamp offset, and a station-to-model-derived live-data shift. Uncertainty bands have nominal rather than guaranteed empirical coverage. Check actual reports before making accuracy claims.
